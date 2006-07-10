@@ -2,27 +2,43 @@
 "colornames.vim - Show named colors - hex code, name, colorized in a window
 "
 "Walter Hutchins
-"Last change: July 10, 2006
-"Version 1.0
+"Last change: July 11, 2006
+"Version 1.1
 "
 "
-" Works in gui only - no color in xterm
+" Named colors work in gui only - no color in xterm
+"
+" cterm/gui colors work in gui and 256 xterms
 "
 "Showhexcolornames() - show all, do not clear syntax
 "
 "Showhexcolornames(9) - show all after clearing syntax
 "
-"Showcolornames(n) - show nth 182 colors, do not clear syntax [n: 0-3, 0-all]
+"Showcolornames(n) - show nth 182 named colors or nth cterm colors
+"                    do not clear syntax.
+"                    [n: 0-3, 0-all named] or [n: 4-5, 6-all cterm]
 "
-"Showcolornames(n,9) - show nth 182 colors after clearing syntax [n: 0-3, 0-all]
+"Showcolornames(9,n) - show nth 182 named colors or nth cterm colors
+"                      after clearing syntax.
+"                      [n: 0-3, 0-all named] or [n: 4-5, 6-all cterm]
+"
+"    n may be combined as in
+"                            Showhexcolors(9,4,5) - clear/ show all cterm
+"                            Showhexcolors(9,1,2,3) - clear/ show all named
+"
+"
+"    n=0 - all named colors
+"    n=6 - all cterm colors
 "
 "Showhexcolornames(8) - cleanup highlighting added by Showhexcolornames
 "
 "vim < 7 only can show 223 simultaneous highlight groups.
 "        Once that limit is exceeded, the colors will be random until exit.
-"        Therefore use 1, 2, or 3, (group of) 182 colors in call.
+"        Therefore use 1, 2, 3, 4, or 5 (group of) colors in call.
 "        Also use 9 - clear syntax, since it needs to clear syntax 
 "        to avoid the 223 limit which makes random colors.
+"        Showhexcolornames(8) may be able to cleanup and continue in the gui
+"        without random colors.
 "
 "vim 7 does not have max 223 colors problem
 "
@@ -42,8 +58,12 @@ function s:Cleanup()
     redir END
     put =@b
     g/^\(col_[A-Fa-f0-9]\{6,6}\)\@!/d
+    g/^\(col_cterm_\d\+\)\@!/d
     %s/\s.*//e
     %s/\(^.*\)/hi clear \1/e
+    % yank b
+    exec @b
+    %s/hi clear/syntax clear/e
     % yank b
     exec @b
     let @b=save_b
@@ -54,15 +74,19 @@ endfunction
 
 function Showhexcolornames(...)
 let save_a=@a
-let subset=0
+let rgbhex=""
+let subset=-1
 let clear_syntax=0
 let cleanup=0
 let remargs=a:0
+let nxtarg=0
 while remargs > 0
-    exec 'let thearg=a:'.remargs
+    let nxtarg=nxtarg + 1
+    exec 'let thearg=a:'.nxtarg
     if type(thearg) == 0
-        if 0 <= thearg && thearg <= 3
+        if 0 <= thearg && thearg <= 6
             let subset=thearg
+            let rgbhex=rgbhex . s:Rgbhex(subset)
         elseif thearg == 9
             let clear_syntax=1
         elseif thearg == 8
@@ -71,6 +95,9 @@ while remargs > 0
     endif
     let remargs=remargs - 1
 endwhile
+if subset == -1
+    let rgbhex=rgbhex . s:Rgbhex()
+endif
 
 if cleanup == 1
     call s:Cleanup()
@@ -80,7 +107,7 @@ if cleanup == 1
     return
 endif
 
-let rgbhex=s:Rgbhex(subset)
+"let rgbhex=s:Rgbhex(subset)
 
 if bufexists("NamedColors") && bufloaded("NamedColors")
     exec 'drop NamedColors'
@@ -96,7 +123,8 @@ if clear_syntax == 1
 endif
 put =rgbhex
 g/^$/d
-g/_/ exec 'hi col_'.expand("<cword>").' guifg='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1) | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
+g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' guifg='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1) | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
+g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' ctermfg='.strpart(expand("<cword>"),6).' guifg=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6)| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
 1
 " we don't want to save the temporary file
 set nomodified
@@ -110,6 +138,8 @@ function s:Rgbhex(...)
 let rgbhex1=""
 let rgbhex2=""
 let rgbhex3=""
+let cterm1=""
+let cterm2=""
 let rgbhex1=rgbhex1 . "fffafa_snow" . "\n"
 let rgbhex1=rgbhex1 . "f8f8ff_GhostWhite" . "\n"
 let rgbhex1=rgbhex1 . "f5f5f5_WhiteSmoke" . "\n"
@@ -658,18 +688,281 @@ let rgbhex3=rgbhex3 . "008b8b_DarkCyan" . "\n"
 let rgbhex3=rgbhex3 . "8b008b_DarkMagenta" . "\n"
 let rgbhex3=rgbhex3 . "8b0000_DarkRed" . "\n"
 let rgbhex3=rgbhex3 . "90ee90_LightGreen" . "\n"
-if a:0 == 0
-    return rgbhex1 . rgbhex2 .rgbhex3
+let cterm1=cterm1 . "cterm_0_gui_000000" . "\n"
+let cterm1=cterm1 . "cterm_1_gui_ce0000" . "\n"
+let cterm1=cterm1 . "cterm_2_gui_00cb00" . "\n"
+let cterm1=cterm1 . "cterm_3_gui_cecb00" . "\n"
+let cterm1=cterm1 . "cterm_4_gui_0000ef" . "\n"
+let cterm1=cterm1 . "cterm_5_gui_ce00ce" . "\n"
+let cterm1=cterm1 . "cterm_6_gui_00cbce" . "\n"
+let cterm1=cterm1 . "cterm_7_gui_e7e3e7" . "\n"
+let cterm1=cterm1 . "cterm_8_gui_7b7d7b" . "\n"
+let cterm1=cterm1 . "cterm_9_gui_ff0000" . "\n"
+let cterm1=cterm1 . "cterm_10_gui_00ff00" . "\n"
+let cterm1=cterm1 . "cterm_11_gui_ffff00" . "\n"
+let cterm1=cterm1 . "cterm_12_gui_5a5dff" . "\n"
+let cterm1=cterm1 . "cterm_13_gui_ff00ff" . "\n"
+let cterm1=cterm1 . "cterm_14_gui_00ffff" . "\n"
+let cterm1=cterm1 . "cterm_15_gui_ffffff" . "\n"
+let cterm1=cterm1 . "cterm_16_gui_000000" . "\n"
+let cterm1=cterm1 . "cterm_17_gui_00005f" . "\n"
+let cterm1=cterm1 . "cterm_18_gui_000087" . "\n"
+let cterm1=cterm1 . "cterm_19_gui_0000af" . "\n"
+let cterm1=cterm1 . "cterm_20_gui_0000d7" . "\n"
+let cterm1=cterm1 . "cterm_21_gui_0000ff" . "\n"
+let cterm1=cterm1 . "cterm_22_gui_005f00" . "\n"
+let cterm1=cterm1 . "cterm_23_gui_005f5f" . "\n"
+let cterm1=cterm1 . "cterm_24_gui_005f87" . "\n"
+let cterm1=cterm1 . "cterm_25_gui_005faf" . "\n"
+let cterm1=cterm1 . "cterm_26_gui_005fd7" . "\n"
+let cterm1=cterm1 . "cterm_27_gui_005fff" . "\n"
+let cterm1=cterm1 . "cterm_28_gui_008700" . "\n"
+let cterm1=cterm1 . "cterm_29_gui_00875f" . "\n"
+let cterm1=cterm1 . "cterm_30_gui_008787" . "\n"
+let cterm1=cterm1 . "cterm_31_gui_0087af" . "\n"
+let cterm1=cterm1 . "cterm_32_gui_0087d7" . "\n"
+let cterm1=cterm1 . "cterm_33_gui_0087ff" . "\n"
+let cterm1=cterm1 . "cterm_34_gui_00af00" . "\n"
+let cterm1=cterm1 . "cterm_35_gui_00af5f" . "\n"
+let cterm1=cterm1 . "cterm_36_gui_00af87" . "\n"
+let cterm1=cterm1 . "cterm_37_gui_00afaf" . "\n"
+let cterm1=cterm1 . "cterm_38_gui_00afd7" . "\n"
+let cterm1=cterm1 . "cterm_39_gui_00afff" . "\n"
+let cterm1=cterm1 . "cterm_40_gui_00d700" . "\n"
+let cterm1=cterm1 . "cterm_41_gui_00d75f" . "\n"
+let cterm1=cterm1 . "cterm_42_gui_00d787" . "\n"
+let cterm1=cterm1 . "cterm_43_gui_00d7af" . "\n"
+let cterm1=cterm1 . "cterm_44_gui_00d7d7" . "\n"
+let cterm1=cterm1 . "cterm_45_gui_00d7ff" . "\n"
+let cterm1=cterm1 . "cterm_46_gui_00ff00" . "\n"
+let cterm1=cterm1 . "cterm_47_gui_00ff5f" . "\n"
+let cterm1=cterm1 . "cterm_48_gui_00ff87" . "\n"
+let cterm1=cterm1 . "cterm_49_gui_00ffaf" . "\n"
+let cterm1=cterm1 . "cterm_50_gui_00ffd7" . "\n"
+let cterm1=cterm1 . "cterm_51_gui_00ffff" . "\n"
+let cterm1=cterm1 . "cterm_52_gui_5f0000" . "\n"
+let cterm1=cterm1 . "cterm_53_gui_5f005f" . "\n"
+let cterm1=cterm1 . "cterm_54_gui_5f0087" . "\n"
+let cterm1=cterm1 . "cterm_55_gui_5f00af" . "\n"
+let cterm1=cterm1 . "cterm_56_gui_5f00d7" . "\n"
+let cterm1=cterm1 . "cterm_57_gui_5f00ff" . "\n"
+let cterm1=cterm1 . "cterm_58_gui_5f5f00" . "\n"
+let cterm1=cterm1 . "cterm_59_gui_5f5f5f" . "\n"
+let cterm1=cterm1 . "cterm_60_gui_5f5f87" . "\n"
+let cterm1=cterm1 . "cterm_61_gui_5f5faf" . "\n"
+let cterm1=cterm1 . "cterm_62_gui_5f5fd7" . "\n"
+let cterm1=cterm1 . "cterm_64_gui_5f8700" . "\n"
+let cterm1=cterm1 . "cterm_65_gui_5f875f" . "\n"
+let cterm1=cterm1 . "cterm_66_gui_5f8787" . "\n"
+let cterm1=cterm1 . "cterm_63_gui_5f5fff" . "\n"
+let cterm1=cterm1 . "cterm_67_gui_5f87af" . "\n"
+let cterm1=cterm1 . "cterm_68_gui_5f87d7" . "\n"
+let cterm1=cterm1 . "cterm_69_gui_5f87ff" . "\n"
+let cterm1=cterm1 . "cterm_70_gui_5faf00" . "\n"
+let cterm1=cterm1 . "cterm_71_gui_5faf5f" . "\n"
+let cterm1=cterm1 . "cterm_72_gui_5faf87" . "\n"
+let cterm1=cterm1 . "cterm_73_gui_5fafaf" . "\n"
+let cterm1=cterm1 . "cterm_74_gui_5fafd7" . "\n"
+let cterm1=cterm1 . "cterm_75_gui_5fafff" . "\n"
+let cterm1=cterm1 . "cterm_76_gui_5fd700" . "\n"
+let cterm1=cterm1 . "cterm_77_gui_5fd75f" . "\n"
+let cterm1=cterm1 . "cterm_78_gui_5fd787" . "\n"
+let cterm1=cterm1 . "cterm_79_gui_5fd7af" . "\n"
+let cterm1=cterm1 . "cterm_80_gui_5fd7d7" . "\n"
+let cterm1=cterm1 . "cterm_81_gui_5fd7ff" . "\n"
+let cterm1=cterm1 . "cterm_82_gui_5fff00" . "\n"
+let cterm1=cterm1 . "cterm_83_gui_5fff5f" . "\n"
+let cterm1=cterm1 . "cterm_84_gui_5fff87" . "\n"
+let cterm1=cterm1 . "cterm_85_gui_5fffaf" . "\n"
+let cterm1=cterm1 . "cterm_86_gui_5fffd7" . "\n"
+let cterm1=cterm1 . "cterm_87_gui_5fffff" . "\n"
+let cterm1=cterm1 . "cterm_88_gui_870000" . "\n"
+let cterm1=cterm1 . "cterm_89_gui_87005f" . "\n"
+let cterm1=cterm1 . "cterm_90_gui_870087" . "\n"
+let cterm1=cterm1 . "cterm_91_gui_8700af" . "\n"
+let cterm1=cterm1 . "cterm_92_gui_8700d7" . "\n"
+let cterm1=cterm1 . "cterm_93_gui_8700ff" . "\n"
+let cterm1=cterm1 . "cterm_94_gui_875f00" . "\n"
+let cterm1=cterm1 . "cterm_95_gui_875f5f" . "\n"
+let cterm1=cterm1 . "cterm_96_gui_875f87" . "\n"
+let cterm1=cterm1 . "cterm_97_gui_875faf" . "\n"
+let cterm1=cterm1 . "cterm_98_gui_875fd7" . "\n"
+let cterm1=cterm1 . "cterm_99_gui_875fff" . "\n"
+let cterm1=cterm1 . "cterm_100_gui_878700" . "\n"
+let cterm1=cterm1 . "cterm_101_gui_87875f" . "\n"
+let cterm1=cterm1 . "cterm_102_gui_878787" . "\n"
+let cterm1=cterm1 . "cterm_103_gui_8787af" . "\n"
+let cterm1=cterm1 . "cterm_104_gui_8787d7" . "\n"
+let cterm1=cterm1 . "cterm_105_gui_8787ff" . "\n"
+let cterm1=cterm1 . "cterm_106_gui_87af00" . "\n"
+let cterm1=cterm1 . "cterm_107_gui_87af5f" . "\n"
+let cterm1=cterm1 . "cterm_108_gui_87af87" . "\n"
+let cterm1=cterm1 . "cterm_109_gui_87afaf" . "\n"
+let cterm1=cterm1 . "cterm_110_gui_87afd7" . "\n"
+let cterm1=cterm1 . "cterm_111_gui_87afff" . "\n"
+let cterm1=cterm1 . "cterm_112_gui_87d700" . "\n"
+let cterm1=cterm1 . "cterm_113_gui_87d75f" . "\n"
+let cterm1=cterm1 . "cterm_114_gui_87d787" . "\n"
+let cterm1=cterm1 . "cterm_115_gui_87d7af" . "\n"
+let cterm1=cterm1 . "cterm_116_gui_87d7d7" . "\n"
+let cterm1=cterm1 . "cterm_117_gui_87d7ff" . "\n"
+let cterm1=cterm1 . "cterm_118_gui_87ff00" . "\n"
+let cterm1=cterm1 . "cterm_119_gui_87ff5f" . "\n"
+let cterm1=cterm1 . "cterm_120_gui_87ff87" . "\n"
+let cterm1=cterm1 . "cterm_121_gui_87ffaf" . "\n"
+let cterm1=cterm1 . "cterm_122_gui_87ffd7" . "\n"
+let cterm1=cterm1 . "cterm_123_gui_87ffff" . "\n"
+let cterm1=cterm1 . "cterm_124_gui_af0000" . "\n"
+let cterm1=cterm1 . "cterm_125_gui_af005f" . "\n"
+let cterm1=cterm1 . "cterm_126_gui_af0087" . "\n"
+let cterm1=cterm1 . "cterm_127_gui_af00af" . "\n"
+let cterm1=cterm1 . "cterm_128_gui_af00d7" . "\n"
+let cterm2=cterm2 . "cterm_129_gui_af00ff" . "\n"
+let cterm2=cterm2 . "cterm_130_gui_af5f00" . "\n"
+let cterm2=cterm2 . "cterm_131_gui_af5f5f" . "\n"
+let cterm2=cterm2 . "cterm_132_gui_af5f87" . "\n"
+let cterm2=cterm2 . "cterm_133_gui_af5faf" . "\n"
+let cterm2=cterm2 . "cterm_134_gui_af5fd7" . "\n"
+let cterm2=cterm2 . "cterm_135_gui_af5fff" . "\n"
+let cterm2=cterm2 . "cterm_136_gui_af8700" . "\n"
+let cterm2=cterm2 . "cterm_137_gui_af875f" . "\n"
+let cterm2=cterm2 . "cterm_138_gui_af8787" . "\n"
+let cterm2=cterm2 . "cterm_139_gui_af87af" . "\n"
+let cterm2=cterm2 . "cterm_140_gui_af87d7" . "\n"
+let cterm2=cterm2 . "cterm_141_gui_af87ff" . "\n"
+let cterm2=cterm2 . "cterm_142_gui_afaf00" . "\n"
+let cterm2=cterm2 . "cterm_143_gui_afaf5f" . "\n"
+let cterm2=cterm2 . "cterm_144_gui_afaf87" . "\n"
+let cterm2=cterm2 . "cterm_145_gui_afafaf" . "\n"
+let cterm2=cterm2 . "cterm_146_gui_afafd7" . "\n"
+let cterm2=cterm2 . "cterm_147_gui_afafff" . "\n"
+let cterm2=cterm2 . "cterm_148_gui_afd700" . "\n"
+let cterm2=cterm2 . "cterm_149_gui_afd75f" . "\n"
+let cterm2=cterm2 . "cterm_150_gui_afd787" . "\n"
+let cterm2=cterm2 . "cterm_151_gui_afd7af" . "\n"
+let cterm2=cterm2 . "cterm_152_gui_afd7d7" . "\n"
+let cterm2=cterm2 . "cterm_153_gui_afd7ff" . "\n"
+let cterm2=cterm2 . "cterm_154_gui_afff00" . "\n"
+let cterm2=cterm2 . "cterm_155_gui_afff5f" . "\n"
+let cterm2=cterm2 . "cterm_156_gui_afff87" . "\n"
+let cterm2=cterm2 . "cterm_157_gui_afffaf" . "\n"
+let cterm2=cterm2 . "cterm_158_gui_afffd7" . "\n"
+let cterm2=cterm2 . "cterm_159_gui_afffff" . "\n"
+let cterm2=cterm2 . "cterm_160_gui_d70000" . "\n"
+let cterm2=cterm2 . "cterm_161_gui_d7005f" . "\n"
+let cterm2=cterm2 . "cterm_162_gui_d70087" . "\n"
+let cterm2=cterm2 . "cterm_163_gui_d700af" . "\n"
+let cterm2=cterm2 . "cterm_164_gui_d700d7" . "\n"
+let cterm2=cterm2 . "cterm_165_gui_d700ff" . "\n"
+let cterm2=cterm2 . "cterm_166_gui_d75f00" . "\n"
+let cterm2=cterm2 . "cterm_167_gui_d75f5f" . "\n"
+let cterm2=cterm2 . "cterm_168_gui_d75f87" . "\n"
+let cterm2=cterm2 . "cterm_169_gui_d75faf" . "\n"
+let cterm2=cterm2 . "cterm_170_gui_d75fd7" . "\n"
+let cterm2=cterm2 . "cterm_171_gui_d75fff" . "\n"
+let cterm2=cterm2 . "cterm_172_gui_d78700" . "\n"
+let cterm2=cterm2 . "cterm_173_gui_d7875f" . "\n"
+let cterm2=cterm2 . "cterm_174_gui_d78787" . "\n"
+let cterm2=cterm2 . "cterm_175_gui_d787af" . "\n"
+let cterm2=cterm2 . "cterm_176_gui_d787d7" . "\n"
+let cterm2=cterm2 . "cterm_177_gui_d787ff" . "\n"
+let cterm2=cterm2 . "cterm_178_gui_d7af00" . "\n"
+let cterm2=cterm2 . "cterm_179_gui_d7af5f" . "\n"
+let cterm2=cterm2 . "cterm_180_gui_d7af87" . "\n"
+let cterm2=cterm2 . "cterm_181_gui_d7afaf" . "\n"
+let cterm2=cterm2 . "cterm_182_gui_d7afd7" . "\n"
+let cterm2=cterm2 . "cterm_183_gui_d7afff" . "\n"
+let cterm2=cterm2 . "cterm_184_gui_d7d700" . "\n"
+let cterm2=cterm2 . "cterm_185_gui_d7d75f" . "\n"
+let cterm2=cterm2 . "cterm_186_gui_d7d787" . "\n"
+let cterm2=cterm2 . "cterm_187_gui_d7d7af" . "\n"
+let cterm2=cterm2 . "cterm_188_gui_d7d7d7" . "\n"
+let cterm2=cterm2 . "cterm_189_gui_d7d7ff" . "\n"
+let cterm2=cterm2 . "cterm_190_gui_d7ff00" . "\n"
+let cterm2=cterm2 . "cterm_191_gui_d7ff5f" . "\n"
+let cterm2=cterm2 . "cterm_192_gui_d7ff87" . "\n"
+let cterm2=cterm2 . "cterm_193_gui_d7ffaf" . "\n"
+let cterm2=cterm2 . "cterm_194_gui_d7ffd7" . "\n"
+let cterm2=cterm2 . "cterm_195_gui_d7ffff" . "\n"
+let cterm2=cterm2 . "cterm_196_gui_ff0000" . "\n"
+let cterm2=cterm2 . "cterm_197_gui_ff005f" . "\n"
+let cterm2=cterm2 . "cterm_198_gui_ff0087" . "\n"
+let cterm2=cterm2 . "cterm_199_gui_ff00af" . "\n"
+let cterm2=cterm2 . "cterm_200_gui_ff00d7" . "\n"
+let cterm2=cterm2 . "cterm_201_gui_ff00ff" . "\n"
+let cterm2=cterm2 . "cterm_202_gui_ff5f00" . "\n"
+let cterm2=cterm2 . "cterm_203_gui_ff5f5f" . "\n"
+let cterm2=cterm2 . "cterm_204_gui_ff5f87" . "\n"
+let cterm2=cterm2 . "cterm_205_gui_ff5faf" . "\n"
+let cterm2=cterm2 . "cterm_206_gui_ff5fd7" . "\n"
+let cterm2=cterm2 . "cterm_207_gui_ff5fff" . "\n"
+let cterm2=cterm2 . "cterm_208_gui_ff8700" . "\n"
+let cterm2=cterm2 . "cterm_209_gui_ff875f" . "\n"
+let cterm2=cterm2 . "cterm_210_gui_ff8787" . "\n"
+let cterm2=cterm2 . "cterm_211_gui_ff87af" . "\n"
+let cterm2=cterm2 . "cterm_212_gui_ff87d7" . "\n"
+let cterm2=cterm2 . "cterm_213_gui_ff87ff" . "\n"
+let cterm2=cterm2 . "cterm_214_gui_ffaf00" . "\n"
+let cterm2=cterm2 . "cterm_215_gui_ffaf5f" . "\n"
+let cterm2=cterm2 . "cterm_216_gui_ffaf87" . "\n"
+let cterm2=cterm2 . "cterm_217_gui_ffafaf" . "\n"
+let cterm2=cterm2 . "cterm_218_gui_ffafd7" . "\n"
+let cterm2=cterm2 . "cterm_219_gui_ffafff" . "\n"
+let cterm2=cterm2 . "cterm_220_gui_ffd700" . "\n"
+let cterm2=cterm2 . "cterm_221_gui_ffd75f" . "\n"
+let cterm2=cterm2 . "cterm_222_gui_ffd787" . "\n"
+let cterm2=cterm2 . "cterm_223_gui_ffd7af" . "\n"
+let cterm2=cterm2 . "cterm_224_gui_ffd7d7" . "\n"
+let cterm2=cterm2 . "cterm_225_gui_ffd7ff" . "\n"
+let cterm2=cterm2 . "cterm_226_gui_ffff00" . "\n"
+let cterm2=cterm2 . "cterm_227_gui_ffff5f" . "\n"
+let cterm2=cterm2 . "cterm_228_gui_ffff87" . "\n"
+let cterm2=cterm2 . "cterm_229_gui_ffffaf" . "\n"
+let cterm2=cterm2 . "cterm_230_gui_ffffd7" . "\n"
+let cterm2=cterm2 . "cterm_231_gui_ffffff" . "\n"
+let cterm2=cterm2 . "cterm_232_gui_080808" . "\n"
+let cterm2=cterm2 . "cterm_233_gui_121212" . "\n"
+let cterm2=cterm2 . "cterm_234_gui_1c1c1c" . "\n"
+let cterm2=cterm2 . "cterm_235_gui_262626" . "\n"
+let cterm2=cterm2 . "cterm_236_gui_303030" . "\n"
+let cterm2=cterm2 . "cterm_237_gui_3a3a3a" . "\n"
+let cterm2=cterm2 . "cterm_238_gui_444444" . "\n"
+let cterm2=cterm2 . "cterm_239_gui_4e4e4e" . "\n"
+let cterm2=cterm2 . "cterm_240_gui_585858" . "\n"
+let cterm2=cterm2 . "cterm_241_gui_626262" . "\n"
+let cterm2=cterm2 . "cterm_242_gui_6c6c6c" . "\n"
+let cterm2=cterm2 . "cterm_243_gui_767676" . "\n"
+let cterm2=cterm2 . "cterm_244_gui_808080" . "\n"
+let cterm2=cterm2 . "cterm_245_gui_8a8a8a" . "\n"
+let cterm2=cterm2 . "cterm_246_gui_949494" . "\n"
+let cterm2=cterm2 . "cterm_247_gui_9e9e9e" . "\n"
+let cterm2=cterm2 . "cterm_248_gui_a8a8a8" . "\n"
+let cterm2=cterm2 . "cterm_249_gui_b2b2b2" . "\n"
+let cterm2=cterm2 . "cterm_250_gui_bcbcbc" . "\n"
+let cterm2=cterm2 . "cterm_251_gui_c6c6c6" . "\n"
+let cterm2=cterm2 . "cterm_252_gui_d0d0d0" . "\n"
+let cterm2=cterm2 . "cterm_253_gui_dadada" . "\n"
+let cterm2=cterm2 . "cterm_254_gui_e4e4e4" . "\n"
+let cterm2=cterm2 . "cterm_255_gui_eeeeee" . "\n"
+if a:0 == 0 
+    return rgbhex1 . rgbhex2 . rgbhex3 . cterm1 . cterm2
 endif
 if a:0 == 1
     if a:1 == 0 || a:1 == ""
-        return rgbhex1 . rgbhex2 .rgbhex3
+        return rgbhex1 . rgbhex2 . rgbhex3
     elseif a:1 == 1
         return rgbhex1
     elseif a:1 == 2
         return rgbhex2
     elseif a:1 == 3
         return rgbhex3
+    elseif a:1 == 4
+        return cterm1
+    elseif a:1 == 5
+        return cterm2
+    elseif a:1 == 6
+        return cterm1 . cterm2
     endif
 endif
 endfunction
+
