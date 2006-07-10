@@ -1,0 +1,67 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1604
+
+Show named colors / cterm colors with hex code, name, colorized in a window
+
+ Named colors work in gui only - no color in xterm
+
+ cterm/gui colors work in gui and 256 xterms
+
+call Showhexcolornames() - show all, do not clear syntax
+
+call Showhexcolornames(b) - show all (background), do not clear syntax
+
+call Showhexcolornames(9) - show all after clearing syntax
+
+call Showcolornames(n) - show nth 182 named colors or nth cterm colors
+                                             do not clear syntax.
+                    [n: 1-3, named]
+                    [n: 4-5, cterm]
+                    [n: 10,11, cterm (hsv sorted)]
+                    [n: 12-14 named (hsv sorted)]
+                    [n: 20-24 mixed (hsv sorted)]
+                    [hsv sorted: black->red->green->blue->purple]
+
+
+call Showcolornames(9,n) - show nth 182 named colors or nth cterm colors
+                                                after clearing syntax.
+                    [n: 1-3, named]
+                    [n: 4-5, cterm]
+                    [n: 10,11, cterm (hsv sorted)]
+                    [n: 12-14 named (hsv sorted)]
+                    [n: 20-24 mixed (hsv sorted)]
+                    [hsv sorted: black->red->green->blue->purple]
+
+
+    n, b, 9 may be combined as in
+                            Showhexcolors(9,4,5) - clear/ show all cterm
+                            Showhexcolors(9,1,2,3) - clear/ show all named
+                            Showhexcolors(9,r,4) - clear/ show 1st cterm
+                                                                    group in background blocks
+
+
+    n=0 - all named colors
+    n=6 - all cterm colors
+    n=7 - all mixed colors (hsv sorted)
+    n=15 - all named colors (hsv sorted)
+    n=16 - all cterm colors (hsv sorted)
+
+    n=20 - mixed, hsv sorted, "blacks to whites
+    n=21 - mixed, hsv sorted, "reds to yellows
+    n=22 - mixed, hsv sorted, "yellows to greens
+    n=23 - mixed, hsv sorted, "blues
+    n=24 - mixed, hsv sorted, "purples
+
+    r   - same as b (or background, or reverse) 
+
+call Showhexcolornames(8) - cleanup highlighting added by Showhexcolornames
+
+vim < 7 only can show 223 simultaneous highlight groups.
+        Once that limit is exceeded, the colors will be random until exit.
+        Therefore use 1, 2, 3, 4, or 5 (group of) colors in call.
+        Also use 9 - clear syntax, since it needs to clear syntax 
+        to avoid the 223 limit which makes random colors.
+
+vim 7 does not have max 223 colors problem
+
+This script is also used by color_toon.vim for selecting colorscheme colors.
+
