@@ -3,7 +3,7 @@
 "
 "Walter Hutchins
 "Last change: July 11, 2006
-"Version 1.1.01
+"Version 1.2
 "
 "Setup:
 "      copy to ~./vim/plugin
@@ -18,6 +18,8 @@
 "
 "Showhexcolornames() - show all, do not clear syntax
 "
+"Showhexcolornames(b) - show all (background), do not clear syntax
+"
 "Showhexcolornames(9) - show all after clearing syntax
 "
 "Showcolornames(n) - show nth 182 named colors or nth cterm colors
@@ -28,13 +30,16 @@
 "                      after clearing syntax.
 "                      [n: 0-3, 0-all named] or [n: 4-5, 6-all cterm]
 "
-"    n may be combined as in
+"    n, b, 9 may be combined as in
 "                            Showhexcolors(9,4,5) - clear/ show all cterm
 "                            Showhexcolors(9,1,2,3) - clear/ show all named
+"                            Showhexcolors(9,r,4) - clear/ show 1st cterm
+"                                                   group in background blocks
 "
 "
 "    n=0 - all named colors
 "    n=6 - all cterm colors
+"    r   - same as b (or background, or reverse) 
 "
 "Showhexcolornames(8) - cleanup highlighting added by Showhexcolornames
 "
@@ -80,6 +85,8 @@ endfunction
 function Showhexcolornames(...)
 let save_a=@a
 let rgbhex=""
+let ground='fg'
+let rbf=""
 let subset=-1
 let clear_syntax=0
 let cleanup=0
@@ -89,7 +96,10 @@ while remargs > 0
     let nxtarg=nxtarg + 1
     exec 'let thearg=a:'.nxtarg
     "if type(thearg) == 0
-        if 0 <= thearg && thearg <= 6
+        if thearg =~? '^r' || thearg =~? '^b'
+            let ground='bg'
+	    let rbf=' guifg=#000000 ctermfg=0'
+	elseif 0 <= thearg && thearg <= 6
             let subset=thearg
             let rgbhex=rgbhex . s:Rgbhex(subset)
         elseif thearg == 9
@@ -128,8 +138,8 @@ if clear_syntax == 1
 endif
 put =rgbhex
 g/^$/d
-g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' guifg='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1) | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
-g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' ctermfg='.strpart(expand("<cword>"),6).' guifg=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6)| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
+g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' gui'.ground.'='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1).rbf | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
+g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' cterm'.ground.'='.strpart(expand("<cword>"),6).' gui'.ground.'=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6).rbf| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
 1
 " we don't want to save the temporary file
 set nomodified
