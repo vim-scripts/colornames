@@ -3,7 +3,13 @@
 "
 "Walter Hutchins
 "Last change: July 11, 2006
-"Version 1.1
+"Version 1.1.01
+"
+"Setup:
+"      copy to ~./vim/plugin
+"      
+"      optionally set up command:
+"      command! -nargs=* Cna call Showhexcolornames(<f-args>)
 "
 "
 " Named colors work in gui only - no color in xterm
@@ -41,7 +47,6 @@
 "        without random colors.
 "
 "vim 7 does not have max 223 colors problem
-"
 
 function s:Synclear()
     "syntax clear
@@ -83,7 +88,7 @@ let nxtarg=0
 while remargs > 0
     let nxtarg=nxtarg + 1
     exec 'let thearg=a:'.nxtarg
-    if type(thearg) == 0
+    "if type(thearg) == 0
         if 0 <= thearg && thearg <= 6
             let subset=thearg
             let rgbhex=rgbhex . s:Rgbhex(subset)
@@ -92,7 +97,7 @@ while remargs > 0
         elseif thearg == 8
             let cleanup=1
         endif
-    endif
+    "endif
     let remargs=remargs - 1
 endwhile
 if subset == -1
