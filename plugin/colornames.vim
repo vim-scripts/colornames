@@ -2,8 +2,8 @@
 "colornames.vim - Show named colors - hex code, name, colorized in a window
 "
 "Walter Hutchins
-"Last change: July 11, 2006
-"Version 1.2
+"Last change: July 12, 2006
+"Version 1.3
 "
 "Setup:
 "      copy to ~./vim/plugin
@@ -20,6 +20,12 @@
 "
 "Showhexcolornames(b) - show all (background), do not clear syntax
 "
+"Showhexcolornames(r) - same as b
+"
+"Showhexcolornames(v) - Open window vertical split
+"
+"Showhexcolornames(h) - Open window horizontal split (default if not 'v')
+"
 "Showhexcolornames(9) - show all after clearing syntax
 "
 "Showcolornames(n) - show nth 182 named colors or nth cterm colors
@@ -30,11 +36,14 @@
 "                      after clearing syntax.
 "                      [n: 0-3, 0-all named] or [n: 4-5, 6-all cterm]
 "
-"    n, b, 9 may be combined as in
+"    n, b, v, 9 may be combined as in
 "                            Showhexcolors(9,4,5) - clear/ show all cterm
 "                            Showhexcolors(9,1,2,3) - clear/ show all named
 "                            Showhexcolors(9,r,4) - clear/ show 1st cterm
 "                                                   group in background blocks
+"                            Showhexcolors(9,v,5,1) - clear/ vertical split/
+"                                                   show 2nd cterm group
+"                                                   and 1st named colors group
 "
 "
 "    n=0 - all named colors
@@ -82,11 +91,34 @@ function s:Cleanup()
     q
 endfunction
 
+function s:Cleanup2()
+    if bufexists("NamedColors") && bufloaded("NamedColors")
+        exec 'drop NamedColors'
+    else
+        if s:vert_horiz == "v"
+            vnew
+        else
+            new
+        endif
+        exec 'edit NamedColors'
+    endif
+    let save_b=@b
+    silent g/^$/d
+    silent %s/\(^.*\)/hi clear col_\1/e
+    silent % yank b
+    silent @b
+    silent %s/hi clear/syntax clear/e
+    silent % yank b
+    silent @b
+    let @b=save_b
+endfunction
+
 function Showhexcolornames(...)
 let save_a=@a
 let rgbhex=""
 let ground='fg'
 let rbf=""
+let s:vert_horiz="h"
 let subset=-1
 let clear_syntax=0
 let cleanup=0
@@ -99,6 +131,10 @@ while remargs > 0
         if thearg =~? '^r' || thearg =~? '^b'
             let ground='bg'
 	    let rbf=' guifg=#000000 ctermfg=0'
+        elseif thearg =~? '^v'
+            let s:vert_horiz="v"
+        elseif thearg =~? '^h'
+            let s:vert_horiz="h"
 	elseif 0 <= thearg && thearg <= 6
             let subset=thearg
             let rgbhex=rgbhex . s:Rgbhex(subset)
@@ -115,10 +151,10 @@ if subset == -1
 endif
 
 if cleanup == 1
-    call s:Cleanup()
+    call s:Cleanup2()
 "this trick avoids "PRESS ENTER" prompt
-0 append
-.
+"0 append
+".
     return
 endif
 
@@ -127,19 +163,24 @@ endif
 if bufexists("NamedColors") && bufloaded("NamedColors")
     exec 'drop NamedColors'
 else
-    vnew
+    if s:vert_horiz == "v"
+        vnew
+    else
+        new
+    endif
     exec 'edit NamedColors'
+    silent g/^$/d
 endif
 
-1,$d
 "maybe you dont want to
 if clear_syntax == 1
-    call s:Synclear()
+    call s:Cleanup2()
 endif
-put =rgbhex
+1,$d
+silent put =rgbhex
 g/^$/d
-g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' gui'.ground.'='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1).rbf | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
-g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' cterm'.ground.'='.strpart(expand("<cword>"),6).' gui'.ground.'=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6).rbf| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
+silent g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' gui'.ground.'='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1).rbf | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
+silent g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' cterm'.ground.'='.strpart(expand("<cword>"),6).' gui'.ground.'=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6).rbf| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
 1
 " we don't want to save the temporary file
 set nomodified
