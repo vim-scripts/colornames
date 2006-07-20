@@ -3,7 +3,7 @@
 "
 "Walter Hutchins
 "Last change: July 17, 2006
-"Version 1.4
+"Version 1.5
 "
 "Setup:
 "      copy to ~./vim/plugin
@@ -244,8 +244,30 @@ elseif subset == 24
     "purples
     1,$-134-2-6d
 endif
+
+"Prior to vim 7, :help limit shows - highlighting different types: 223
+"Subtracting an average of 39 types from 223 = 184. Stop adding types at 184.
+let @a=""
+let chk=""
+if version < 700      
+    let chk=line("$")
+    if chk > 184
+	184,$d a
+    endif
+endif
+
 silent g/^[A-Fa-f0-9]\{6,6}_/ exec 'hi col_'.expand("<cword>").' gui'.ground.'='.strpart(expand("<cword>"),match(expand("<cword>"),"_")+1).rbf | exec 'syn keyword col_'.expand("<cword>").' '.expand("<cword>")
 silent g/^cterm_\d\+/ exec 'hi col_'.expand("<cword>").' cterm'.ground.'='.strpart(expand("<cword>"),6).' gui'.ground.'=#'.strpart(expand("<cword>"),strlen(expand("<cword>"))-6).rbf| exec 'syn keyword col_'.expand("<cword>")." ".expand("<cword>")
+
+"Prior to vim 7, :help limit shows - highlighting different types: 223
+"Show the remaining color names unhighlighted.
+if version < 700 
+    if chk > 184
+	$
+        put a
+    endif
+endif
+
 1
 " we don't want to save the temporary file
 set nomodified
